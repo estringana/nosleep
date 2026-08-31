@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NoSleep Gym Timer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-card">
+        <div class="timer-grid">
+          <button
+            class="main-ring"
+            id="main-ring"
+            type="button"
+            aria-label="Start or pause timer"
+          >
+            <span class="ring-status" id="ring-status">Listo</span>
+            <span class="ring-time" id="total-time">00:00:00</span>
+            <span class="ring-caption">Tiempo total</span>
+          </button>
+
+          <aside class="side-panel">
+            <div class="stat-card current-lap-card">
+              <p class="label">Vuelta actual</p>
+              <p class="value" id="lap-time">00:00</p>
+              <p class="hint">Ideal para medir descansos entre series.</p>
+              <button class="control lap-control" id="lap-button" type="button" disabled>
+                Marcar vuelta
+              </button>
+            </div>
+
+            <div class="stat-card status-card">
+              <p class="label">Wake lock</p>
+              <p class="value status-text" id="wake-status">Inactivo</p>
+              <p class="hint" id="wake-hint">
+                Pulsa empezar con esta pestaña en primer plano.
+              </p>
+            </div>
+          </aside>
+        </div>
+
+        <div class="controls">
+          <button class="control primary" id="start-pause" type="button">
+            Empezar
+          </button>
+          <button class="control ghost" id="reset-button" type="button">
+            Reset
+          </button>
+        </div>
+      </section>
+
+      <section class="laps-card">
+        <div class="laps-header">
+          <div>
+            <p class="eyebrow">Historial de vueltas</p>
+            <h2>Guarda cada descanso o serie</h2>
+          </div>
+          <p class="laps-summary" id="laps-summary">0 vueltas guardadas</p>
+        </div>
+
+        <div class="laps-list" id="laps-list" aria-live="polite">
+          <div class="empty-state" id="empty-state">
+            Pulsa <strong>Vuelta</strong> cada vez que termines una serie. El
+            timer de la vuelta actual se reinicia y el split anterior se guarda
+            aquí.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
