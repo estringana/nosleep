@@ -7,6 +7,8 @@ const state = {
   runStartedAt: null,
   lapStartedAt: null,
   laps: [],
+  durationMs: 0,
+  hasCompletedDuration: false,
   wakeLock: null,
   wakeLockSupported: "wakeLock" in navigator,
 };
@@ -16,11 +18,12 @@ const elements = {
   totalTime: document.querySelector("#total-time"),
   lapTime: document.querySelector("#lap-time"),
   ringStatus: document.querySelector("#ring-status"),
-  wakeStatus: document.querySelector("#wake-status"),
-  wakeHint: document.querySelector("#wake-hint"),
   startPause: document.querySelector("#start-pause"),
   lapButton: document.querySelector("#lap-button"),
   resetButton: document.querySelector("#reset-button"),
+  durationMinutes: document.querySelector("#duration-minutes"),
+  applyDuration: document.querySelector("#apply-duration"),
+  durationStatus: document.querySelector("#duration-status"),
   lapsList: document.querySelector("#laps-list"),
   lapsSummary: document.querySelector("#laps-summary"),
   emptyState: document.querySelector("#empty-state"),
@@ -67,6 +70,8 @@ function persistState() {
     runStartedAt: state.runStartedAt,
     lapStartedAt: state.lapStartedAt,
     laps: state.laps,
+    durationMs: state.durationMs,
+    hasCompletedDuration: state.hasCompletedDuration,
   };
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
@@ -87,6 +92,8 @@ function restoreState() {
     state.runStartedAt = typeof snapshot.runStartedAt === "number" ? snapshot.runStartedAt : null;
     state.lapStartedAt = typeof snapshot.lapStartedAt === "number" ? snapshot.lapStartedAt : null;
     state.laps = Array.isArray(snapshot.laps) ? snapshot.laps : [];
+    state.durationMs = Math.max(0, Number(snapshot.durationMs) || 0);
+    state.hasCompletedDuration = Boolean(snapshot.hasCompletedDuration);
   } catch {
     localStorage.removeItem(STORAGE_KEY);
   }
@@ -98,7 +105,6 @@ async function requestWakeLock() {
   }
 
   if (state.wakeLock) {
-    updateWakeStatus();
     return;
   }
 
@@ -106,19 +112,15 @@ async function requestWakeLock() {
     state.wakeLock = await navigator.wakeLock.request("screen");
     state.wakeLock.addEventListener("release", () => {
       state.wakeLock = null;
-      updateWakeStatus();
     });
   } catch (error) {
     console.error("Wake lock failed", error);
     state.wakeLock = null;
   }
-
-  updateWakeStatus();
 }
 
 async function releaseWakeLock() {
   if (!state.wakeLock) {
-    updateWakeStatus();
     return;
   }
 
@@ -128,46 +130,12 @@ async function releaseWakeLock() {
     console.error("Wake lock release failed", error);
   } finally {
     state.wakeLock = null;
-    updateWakeStatus();
   }
-}
-
-function updateWakeStatus() {
-  if (!state.wakeLockSupported) {
-    elements.wakeStatus.textContent = "No compatible";
-    elements.wakeHint.textContent =
-      "Este navegador no expone Screen Wake Lock API. Usa Safari reciente o Chromium.";
-    return;
-  }
-
-  if (state.wakeLock) {
-    elements.wakeStatus.textContent = "Activo";
-    elements.wakeHint.textContent =
-      "La pantalla debería seguir despierta mientras esta pestaña siga visible.";
-    return;
-  }
-
-  if (state.isRunning && document.visibilityState !== "visible") {
-    elements.wakeStatus.textContent = "En espera";
-    elements.wakeHint.textContent =
-      "Devuelve esta pestaña al primer plano para reacquirir el wake lock.";
-    return;
-  }
-
-  if (state.isRunning) {
-    elements.wakeStatus.textContent = "Reintentando";
-    elements.wakeHint.textContent =
-      "El cronómetro sigue corriendo, pero el navegador todavía tiene que conceder o restaurar el wake lock.";
-    return;
-  }
-
-  elements.wakeStatus.textContent = "Inactivo";
-  elements.wakeHint.textContent = "Pulsa empezar con esta pestaña en primer plano.";
 }
 
 function renderLaps() {
   elements.lapsSummary.textContent = `${state.laps.length} ${
-    state.laps.length === 1 ? "vuelta guardada" : "vueltas guardadas"
+    state.laps.length === 1 ? "vuelta" : "vueltas"
   }`;
 
   if (state.laps.length === 0) {
@@ -202,22 +170,52 @@ function renderLaps() {
 function render() {
   const now = getNow();
   const totalElapsed = getTotalElapsed(now);
+
+  if (state.isRunning && state.durationMs > 0 && totalElapsed >= state.durationMs) {
+    pauseTimer({ automatic: true, now });
+    return;
+  }
+
   const lapElapsed = getLapElapsed(now);
 
   elements.totalTime.textContent = formatDuration(totalElapsed, true);
   elements.lapTime.textContent = formatDuration(lapElapsed, totalElapsed >= 3600000);
-  elements.startPause.textContent = state.isRunning ? "Pausar" : "Empezar";
+  elements.startPause.textContent = state.isRunning
+    ? "Pausar"
+    : state.hasCompletedDuration
+      ? "Empezar de nuevo"
+      : "Empezar";
   elements.lapButton.disabled = !state.isRunning;
-  elements.ringStatus.textContent = state.isRunning ? "Corriendo" : "Listo";
+  elements.ringStatus.textContent = state.isRunning
+    ? "Corriendo"
+    : state.hasCompletedDuration
+      ? "Tiempo cumplido"
+      : "Listo";
   elements.mainRing.classList.toggle("running", state.isRunning);
+  if (document.activeElement !== elements.durationMinutes) {
+    elements.durationMinutes.value = state.durationMs
+      ? String(state.durationMs / 60000)
+      : "";
+  }
+  elements.durationStatus.textContent = state.durationMs
+    ? state.hasCompletedDuration
+      ? "Tiempo cumplido. La sesión se ha detenido."
+      : `Se detendrá tras ${formatDuration(state.durationMs, false)}.`
+    : "Sin límite de tiempo";
 
   renderLaps();
-  updateWakeStatus();
 }
 
 function startTimer() {
   if (state.isRunning) {
     return;
+  }
+
+  if (state.hasCompletedDuration) {
+    state.totalAccumulatedMs = 0;
+    state.lapAccumulatedMs = 0;
+    state.laps = [];
+    state.hasCompletedDuration = false;
   }
 
   const now = getNow();
@@ -229,17 +227,20 @@ function startTimer() {
   render();
 }
 
-function pauseTimer() {
+function pauseTimer({ automatic = false, now = getNow() } = {}) {
   if (!state.isRunning) {
     return;
   }
 
-  const now = getNow();
-  state.totalAccumulatedMs = getTotalElapsed(now);
+  const totalElapsed = getTotalElapsed(now);
+  state.totalAccumulatedMs = state.durationMs > 0
+    ? Math.min(totalElapsed, state.durationMs)
+    : totalElapsed;
   state.lapAccumulatedMs = getLapElapsed(now);
   state.runStartedAt = null;
   state.lapStartedAt = null;
   state.isRunning = false;
+  state.hasCompletedDuration = automatic;
   persistState();
   releaseWakeLock();
   render();
@@ -261,8 +262,34 @@ function resetTimer() {
   state.runStartedAt = null;
   state.lapStartedAt = null;
   state.laps = [];
+  state.hasCompletedDuration = false;
   persistState();
   releaseWakeLock();
+  render();
+}
+
+function setDuration() {
+  const rawMinutes = elements.durationMinutes.value.trim();
+
+  if (rawMinutes === "") {
+    state.durationMs = 0;
+    state.hasCompletedDuration = false;
+    persistState();
+    render();
+    return;
+  }
+
+  const minutes = Number(rawMinutes.replace(",", "."));
+  if (!Number.isFinite(minutes) || minutes < 1 || minutes > 1440) {
+    elements.durationStatus.textContent = "Escribe un valor entre 1 y 1440 minutos.";
+    return;
+  }
+
+  state.durationMs = minutes * 60000;
+  state.hasCompletedDuration = state.durationMs > 0
+    && getTotalElapsed() >= state.durationMs;
+  elements.durationMinutes.value = String(minutes);
+  persistState();
   render();
 }
 
@@ -316,6 +343,15 @@ elements.mainRing.addEventListener("click", toggleTimer);
 elements.startPause.addEventListener("click", toggleTimer);
 elements.resetButton.addEventListener("click", resetTimer);
 elements.lapButton.addEventListener("click", captureLap);
+elements.applyDuration.addEventListener("click", setDuration);
+elements.durationMinutes.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") {
+    return;
+  }
+
+  event.preventDefault();
+  setDuration();
+});
 
 restoreState();
 render();

@@ -31,12 +31,17 @@
               </button>
             </div>
 
-            <div class="stat-card status-card">
-              <p class="label">Wake lock</p>
-              <p class="value status-text" id="wake-status">Inactivo</p>
-              <p class="hint" id="wake-hint">
-                Pulsa empezar con esta pestaña en primer plano.
-              </p>
+            <div class="stat-card laps-panel">
+              <div class="laps-panel-header">
+                <p class="label">Historial de vueltas</p>
+                <p class="laps-summary" id="laps-summary">0 vueltas</p>
+              </div>
+
+              <div class="laps-list" id="laps-list" aria-live="polite">
+                <div class="empty-state" id="empty-state">
+                  Marca una vuelta al terminar cada serie para guardar el descanso.
+                </div>
+              </div>
             </div>
           </aside>
         </div>
@@ -49,24 +54,21 @@
             Reset
           </button>
         </div>
-      </section>
 
-      <section class="laps-card">
-        <div class="laps-header">
+        <section class="duration-card" aria-labelledby="duration-title">
           <div>
-            <p class="eyebrow">Historial de vueltas</p>
-            <h2>Guarda cada descanso o serie</h2>
+            <p class="label" id="duration-title">Límite de sesión</p>
+            <p class="duration-description">
+              El cronómetro se pausará y la pantalla podrá bloquearse al terminar.
+            </p>
           </div>
-          <p class="laps-summary" id="laps-summary">0 vueltas guardadas</p>
-        </div>
-
-        <div class="laps-list" id="laps-list" aria-live="polite">
-          <div class="empty-state" id="empty-state">
-            Pulsa <strong>Vuelta</strong> cada vez que termines una serie. El
-            timer de la vuelta actual se reinicia y el split anterior se guarda
-            aquí.
-          </div>
-        </div>
+          <label class="duration-input" for="duration-minutes">
+            <span>Minutos</span>
+            <input id="duration-minutes" type="text" inputmode="numeric" autocomplete="off" placeholder="Sin límite" />
+          </label>
+          <button class="control" id="apply-duration" type="button">Aplicar límite</button>
+          <p class="duration-status" id="duration-status">Sin límite de tiempo</p>
+        </section>
       </section>
     </main>
 
