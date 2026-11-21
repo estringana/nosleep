@@ -1,5 +1,6 @@
 const STORAGE_KEY = "nosleep-training-timer-state";
 const WORKOUT_STORAGE_KEY = "nosleep-workout-state";
+const TABATA_STORAGE_KEY = "nosleep-tabata-state";
 
 const workout = {
   status: "setup",
@@ -12,6 +13,21 @@ const workout = {
   finishedAt: null,
   restUntil: null,
   lastRestCue: null,
+};
+
+const tabata = {
+  status: "setup",
+  workSeconds: 20,
+  restSeconds: 10,
+  intervalCount: 8,
+  soundEnabled: true,
+  voiceEnabled: true,
+  interval: 1,
+  phase: "work",
+  phaseEndsAt: null,
+  startedAt: null,
+  finishedAt: null,
+  lastCueSecond: null,
 };
 
 const state = {
@@ -44,6 +60,7 @@ const elements = {
   modeTabs: document.querySelectorAll(".mode-tab"),
   keepAwakeView: document.querySelector("#keep-awake-view"),
   trainingView: document.querySelector("#training-view"),
+  tabataView: document.querySelector("#tabata-view"),
   trainingSetup: document.querySelector("#training-setup"),
   setupError: document.querySelector("#setup-error"),
   exerciseCount: document.querySelector("#exercise-count"),
@@ -68,11 +85,34 @@ const elements = {
   workoutActionLabel: document.querySelector("#workout-action-label"),
   trainingSummary: document.querySelector("#training-summary"),
   newTraining: document.querySelector("#new-training"),
+  tabataSetup: document.querySelector("#tabata-setup"),
+  tabataSetupError: document.querySelector("#tabata-setup-error"),
+  tabataAudioNote: document.querySelector("#tabata-audio-note"),
+  tabataWorkSeconds: document.querySelector("#tabata-work-seconds"),
+  tabataRestSeconds: document.querySelector("#tabata-rest-seconds"),
+  tabataIntervalCount: document.querySelector("#tabata-interval-count"),
+  tabataSoundEnabled: document.querySelector("#tabata-sound-enabled"),
+  tabataVoiceEnabled: document.querySelector("#tabata-voice-enabled"),
+  tabataSession: document.querySelector("#tabata-session"),
+  tabataComplete: document.querySelector("#tabata-complete"),
+  tabataElapsed: document.querySelector("#tabata-elapsed"),
+  tabataPhaseBanner: document.querySelector("#tabata-phase-banner"),
+  tabataPhaseIcon: document.querySelector("#tabata-phase-icon"),
+  tabataPhaseLabel: document.querySelector("#tabata-phase-label"),
+  tabataPhaseInstruction: document.querySelector("#tabata-phase-instruction"),
+  tabataCountdown: document.querySelector("#tabata-countdown"),
+  tabataIntervalCountLabel: document.querySelector("#tabata-current-interval"),
+  tabataProgressTrack: document.querySelector("#tabata-progress-track"),
+  tabataSummary: document.querySelector("#tabata-summary"),
+  endTabata: document.querySelector("#end-tabata"),
+  newTabata: document.querySelector("#new-tabata"),
 };
 
 let audioContext = null;
 let workoutFormInitialized = false;
 let workoutProgressKey = "";
+let tabataFormInitialized = false;
+let tabataProgressKey = "";
 
 function formatDuration(ms, includeHours = true) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -126,6 +166,10 @@ function persistWorkout() {
   localStorage.setItem(WORKOUT_STORAGE_KEY, JSON.stringify(workout));
 }
 
+function persistTabata() {
+  localStorage.setItem(TABATA_STORAGE_KEY, JSON.stringify(tabata));
+}
+
 function restoreWorkout() {
   const raw = localStorage.getItem(WORKOUT_STORAGE_KEY);
   if (!raw) return;
@@ -158,6 +202,34 @@ function restoreWorkout() {
   }
 }
 
+function restoreTabata() {
+  const raw = localStorage.getItem(TABATA_STORAGE_KEY);
+  if (!raw) return;
+
+  try {
+    const snapshot = JSON.parse(raw);
+    tabata.status = ["setup", "running", "completed"].includes(snapshot.status) ? snapshot.status : "setup";
+    tabata.workSeconds = Math.max(1, Number(snapshot.workSeconds) || 20);
+    tabata.restSeconds = Math.max(1, Number(snapshot.restSeconds) || 10);
+    tabata.intervalCount = Math.min(1000, Math.max(1, Number(snapshot.intervalCount) || 8));
+    tabata.soundEnabled = snapshot.soundEnabled !== false;
+    tabata.voiceEnabled = snapshot.voiceEnabled !== false;
+    tabata.interval = Math.min(tabata.intervalCount, Math.max(1, Number(snapshot.interval) || 1));
+    tabata.phase = snapshot.phase === "rest" ? "rest" : "work";
+    tabata.phaseEndsAt = typeof snapshot.phaseEndsAt === "number" ? snapshot.phaseEndsAt : null;
+    tabata.startedAt = typeof snapshot.startedAt === "number"
+      ? snapshot.startedAt
+      : tabata.status === "running" ? Date.now() : null;
+    tabata.finishedAt = typeof snapshot.finishedAt === "number" ? snapshot.finishedAt : null;
+    tabata.lastCueSecond = null;
+    if (tabata.status === "running" && tabata.phaseEndsAt == null) {
+      tabata.phaseEndsAt = Date.now() + tabata.workSeconds * 1000;
+    }
+  } catch {
+    localStorage.removeItem(TABATA_STORAGE_KEY);
+  }
+}
+
 function restoreState() {
   const raw = localStorage.getItem(STORAGE_KEY);
 
@@ -182,7 +254,8 @@ function restoreState() {
 
 async function requestWakeLock() {
   const workoutIsActive = ["running", "resting"].includes(workout.status);
-  if (!state.wakeLockSupported || (!state.isRunning && !workoutIsActive) || document.visibilityState !== "visible") {
+  const tabataIsActive = tabata.status === "running";
+  if (!state.wakeLockSupported || (!state.isRunning && !workoutIsActive && !tabataIsActive) || document.visibilityState !== "visible") {
     return;
   }
 
@@ -217,7 +290,7 @@ async function releaseWakeLock() {
 
 function releaseWakeLockIfIdle() {
   const workoutIsActive = ["running", "resting"].includes(workout.status);
-  if (!state.isRunning && !workoutIsActive) releaseWakeLock();
+  if (!state.isRunning && !workoutIsActive && tabata.status !== "running") releaseWakeLock();
 }
 
 function renderLaps() {
@@ -292,6 +365,7 @@ function render() {
 
   renderLaps();
   renderWorkout();
+  renderTabata();
 }
 
 function playCue(kind = "tick") {
@@ -431,6 +505,198 @@ function renderWorkout() {
   }
 }
 
+function getTabataElapsed(now = Date.now()) {
+  if (tabata.startedAt == null) return 0;
+  return Math.max(0, (tabata.finishedAt ?? now) - tabata.startedAt);
+}
+
+function renderTabata() {
+  if (tabata.status === "running") advanceTabata(Date.now());
+
+  const isActive = tabata.status === "running";
+  elements.tabataSetup.hidden = isActive || tabata.status === "completed";
+  elements.tabataSession.hidden = !isActive;
+  elements.tabataComplete.hidden = tabata.status !== "completed";
+
+  if (!tabataFormInitialized) {
+    elements.tabataWorkSeconds.value = String(tabata.workSeconds);
+    elements.tabataRestSeconds.value = String(tabata.restSeconds);
+    elements.tabataIntervalCount.value = String(tabata.intervalCount);
+    elements.tabataSoundEnabled.checked = tabata.soundEnabled;
+    elements.tabataVoiceEnabled.checked = tabata.voiceEnabled;
+    tabataFormInitialized = true;
+  }
+
+  const elapsed = formatDuration(getTabataElapsed(), true);
+  if (elements.tabataElapsed.textContent !== elapsed) elements.tabataElapsed.textContent = elapsed;
+  if (tabata.status === "completed") {
+    elements.tabataSummary.textContent = `${tabata.intervalCount} intervalos · ${tabata.workSeconds} s de trabajo y ${tabata.restSeconds} s de descanso · ${formatDuration(getTabataElapsed(), true)}`;
+  }
+
+  const progressKey = `${tabata.intervalCount}-${tabata.interval}-${tabata.phase}-${tabata.status}`;
+  if (progressKey !== tabataProgressKey) {
+    tabataProgressKey = progressKey;
+    elements.tabataProgressTrack.innerHTML = Array.from({ length: tabata.intervalCount }, (_, index) => {
+      const interval = index + 1;
+      const isDone = interval < tabata.interval || tabata.status === "completed";
+      const isCurrent = interval === tabata.interval && tabata.status === "running";
+      return `<span class="tabata-step${isDone ? " done" : ""}${isCurrent ? ` current ${tabata.phase}` : ""}" aria-label="Intervalo ${interval}${isDone ? ", completado" : isCurrent ? `, actual, ${tabata.phase === "work" ? "trabajo" : "descanso"}` : ""}">${interval}</span>`;
+    }).join("");
+  }
+
+  if (isActive) {
+    const isResting = tabata.phase === "rest";
+    const remainingSeconds = Math.max(0, Math.ceil((tabata.phaseEndsAt - Date.now()) / 1000));
+    elements.tabataPhaseBanner.classList.toggle("phase-resting", isResting);
+    elements.tabataPhaseBanner.classList.toggle("phase-working", !isResting);
+    elements.tabataPhaseIcon.textContent = isResting ? "Ⅱ" : "▶";
+    elements.tabataPhaseLabel.textContent = isResting ? "DESCANSO" : "TRABAJO";
+    elements.tabataPhaseInstruction.textContent = `Intervalo ${tabata.interval} de ${tabata.intervalCount}`;
+    elements.tabataCountdown.textContent = formatClock(remainingSeconds);
+    elements.tabataCountdown.classList.toggle("resting", isResting);
+    elements.tabataIntervalCountLabel.textContent = `${tabata.interval} de ${tabata.intervalCount} intervalos`;
+    if (remainingSeconds <= 3 && remainingSeconds > 0 && tabata.lastCueSecond !== remainingSeconds) {
+      tabata.lastCueSecond = remainingSeconds;
+      if (tabata.soundEnabled) playTabataTone("tick");
+      if (tabata.voiceEnabled) speakTabata(["", "uno", "dos", "tres"][remainingSeconds]);
+    }
+  }
+}
+
+function advanceTabata(now) {
+  let transitions = 0;
+  while (tabata.status === "running" && tabata.phaseEndsAt != null && now >= tabata.phaseEndsAt && transitions < 2001) {
+    transitions += 1;
+    if (tabata.phase === "work") {
+      tabata.phase = "rest";
+      tabata.phaseEndsAt += tabata.restSeconds * 1000;
+    } else {
+      if (tabata.interval >= tabata.intervalCount) {
+        tabata.status = "completed";
+        tabata.finishedAt = tabata.phaseEndsAt;
+        tabata.phaseEndsAt = null;
+        tabata.lastCueSecond = null;
+        break;
+      }
+      tabata.phase = "work";
+      tabata.interval += 1;
+      tabata.phaseEndsAt += tabata.workSeconds * 1000;
+    }
+    tabata.lastCueSecond = null;
+  }
+
+  if (transitions > 0) {
+    if (tabata.status === "completed") {
+      if (tabata.soundEnabled) playTabataTone("finish");
+      if (tabata.voiceEnabled) speakTabata("Tabata completado. Buen trabajo.");
+      releaseWakeLockIfIdle();
+    } else {
+      const cue = tabata.phase === "work"
+        ? `Trabajo. Intervalo ${tabata.interval} de ${tabata.intervalCount}. ¡Vamos!`
+        : `Descanso. Intervalo ${tabata.interval} de ${tabata.intervalCount}.`;
+      if (tabata.soundEnabled) playTabataTone(tabata.phase);
+      if (tabata.voiceEnabled) speakTabata(cue);
+    }
+    persistTabata();
+  }
+}
+
+function speakTabata(message) {
+  if (!tabata.voiceEnabled || !("speechSynthesis" in window) || !window.SpeechSynthesisUtterance) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = "es-ES";
+    utterance.rate = 1.04;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    const spanishVoice = window.speechSynthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith("es"));
+    if (spanishVoice) utterance.voice = spanishVoice;
+    window.speechSynthesis.speak(utterance);
+  } catch (error) {
+    console.warn("Spoken Tabata cues are not available", error);
+  }
+}
+
+function playTabataTone(kind) {
+  if (!tabata.soundEnabled) return;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    audioContext ||= new AudioContextClass();
+    if (audioContext.state === "suspended") audioContext.resume();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const now = audioContext.currentTime;
+    oscillator.type = "sine";
+    oscillator.frequency.value = kind === "rest" ? 520 : kind === "finish" ? 1040 : 760;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(kind === "tick" ? 0.08 : 0.2, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + (kind === "tick" ? 0.12 : 0.32));
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + (kind === "tick" ? 0.14 : 0.34));
+  } catch (error) {
+    console.warn("Tabata sound cue could not be played", error);
+  }
+}
+
+function startTabata(event) {
+  event.preventDefault();
+  const workSeconds = readWholeNumber(elements.tabataWorkSeconds.value, false);
+  const restSeconds = readWholeNumber(elements.tabataRestSeconds.value, false);
+  const intervalCount = readWholeNumber(elements.tabataIntervalCount.value, false);
+  const totalMs = intervalCount == null || workSeconds == null || restSeconds == null
+    ? null
+    : intervalCount * (workSeconds + restSeconds) * 1000;
+  if (workSeconds == null || restSeconds == null || intervalCount == null || intervalCount > 1000
+    || !Number.isSafeInteger(workSeconds * 1000)
+    || !Number.isSafeInteger(restSeconds * 1000)
+    || !Number.isSafeInteger(totalMs)) {
+    elements.tabataSetupError.textContent = "Escribe segundos e intervalos enteros mayores que cero. Se admiten hasta 1000 intervalos.";
+    elements.tabataSetupError.hidden = false;
+    return;
+  }
+
+  elements.tabataSetupError.hidden = true;
+  tabata.workSeconds = workSeconds;
+  tabata.restSeconds = restSeconds;
+  tabata.intervalCount = intervalCount;
+  tabata.soundEnabled = elements.tabataSoundEnabled.checked;
+  tabata.voiceEnabled = elements.tabataVoiceEnabled.checked;
+  tabata.interval = 1;
+  tabata.phase = "work";
+  tabata.status = "running";
+  tabata.startedAt = Date.now();
+  tabata.finishedAt = null;
+  tabata.phaseEndsAt = tabata.startedAt + workSeconds * 1000;
+  tabata.lastCueSecond = null;
+  tabataProgressKey = "";
+  if (tabata.soundEnabled) playTabataTone("work");
+  if (tabata.voiceEnabled) speakTabata(`¡Vamos! Trabajo. Intervalo uno de ${intervalCount}.`);
+  persistTabata();
+  requestWakeLock();
+  render();
+}
+
+function endTabata() {
+  tabata.status = "setup";
+  tabata.interval = 1;
+  tabata.phase = "work";
+  tabata.phaseEndsAt = null;
+  tabata.startedAt = null;
+  tabata.finishedAt = null;
+  tabata.lastCueSecond = null;
+  persistTabata();
+  releaseWakeLockIfIdle();
+  render();
+}
+
+function confirmEndTabata() {
+  if (window.confirm("¿Terminar el Tabata ahora? Se perderá el progreso de esta sesión.")) endTabata();
+}
+
 function startWorkout(event) {
   event.preventDefault();
   const exercises = readWholeNumber(elements.exerciseCount.value, false);
@@ -550,8 +816,10 @@ function confirmEndWorkout() {
 
 function showMode(mode) {
   const training = mode === "training";
-  elements.keepAwakeView.hidden = training;
-  elements.trainingView.hidden = !training;
+  const tabataMode = mode === "tabata";
+  elements.keepAwakeView.hidden = training || tabataMode;
+  elements.trainingView.hidden = !training || tabataMode;
+  elements.tabataView.hidden = !tabataMode;
   elements.modeTabs.forEach((tab) => {
     const selected = tab.dataset.mode === mode;
     tab.classList.toggle("active", selected);
@@ -704,6 +972,9 @@ elements.trainingSetup.addEventListener("submit", startWorkout);
 elements.workoutAction.addEventListener("click", handleWorkoutAction);
 document.querySelector("#end-workout").addEventListener("click", confirmEndWorkout);
 elements.newTraining.addEventListener("click", endWorkout);
+elements.tabataSetup.addEventListener("submit", startTabata);
+elements.endTabata.addEventListener("click", confirmEndTabata);
+elements.newTabata.addEventListener("click", endTabata);
 elements.durationMinutes.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") {
     return;
@@ -715,6 +986,7 @@ elements.durationMinutes.addEventListener("keydown", (event) => {
 
 restoreState();
 restoreWorkout();
+restoreTabata();
 render();
 scheduleRenderLoop();
 
@@ -724,4 +996,12 @@ if (state.isRunning) {
 
 if (["running", "resting"].includes(workout.status)) {
   requestWakeLock();
+}
+
+if (tabata.status === "running") {
+  requestWakeLock();
+}
+
+if (!("speechSynthesis" in window) || !window.SpeechSynthesisUtterance) {
+  elements.tabataAudioNote.textContent = "La voz no está disponible en este navegador; se usarán los pitidos.";
 }

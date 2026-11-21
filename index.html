@@ -16,6 +16,7 @@
         <nav class="mode-switch" aria-label="Modos de la aplicación">
           <button class="mode-tab active" type="button" data-mode="keep-awake" aria-pressed="true">Mantener despierto</button>
           <button class="mode-tab" type="button" data-mode="training" aria-pressed="false">Entrenamiento</button>
+          <button class="mode-tab" type="button" data-mode="tabata" aria-pressed="false">Tabata</button>
         </nav>
       </header>
 
@@ -164,6 +165,75 @@
             <h3>Entrenamiento completado</h3>
             <p id="training-summary"></p>
             <button class="control primary" id="new-training" type="button">Preparar otro entrenamiento</button>
+          </section>
+        </section>
+      </section>
+
+      <section class="mode-view" id="tabata-view" hidden>
+        <section class="hero-card training-card tabata-card">
+          <div class="training-heading">
+            <div>
+              <p class="eyebrow">Modo Tabata</p>
+              <h2>Entrena por intervalos</h2>
+              <p class="training-intro">Sigue los avisos de trabajo y descanso; no hace falta mirar la pantalla.</p>
+            </div>
+          </div>
+
+          <form class="training-setup" id="tabata-setup" novalidate>
+            <label class="setup-field">
+              <span>Trabajo (segundos)</span>
+              <input id="tabata-work-seconds" type="text" inputmode="numeric" value="20" />
+            </label>
+            <label class="setup-field">
+              <span>Descanso (segundos)</span>
+              <input id="tabata-rest-seconds" type="text" inputmode="numeric" value="10" />
+            </label>
+            <label class="setup-field">
+              <span>Intervalos</span>
+              <input id="tabata-interval-count" type="text" inputmode="numeric" value="8" />
+            </label>
+            <label class="sound-setting">
+              <input id="tabata-sound-enabled" type="checkbox" checked />
+              <span>Pitidos</span>
+            </label>
+            <label class="sound-setting">
+              <input id="tabata-voice-enabled" type="checkbox" checked />
+              <span>Voz hablada</span>
+            </label>
+            <button class="control primary setup-start" type="submit">Empezar Tabata</button>
+            <p class="training-intro audio-note" id="tabata-audio-note">Usa la voz en español disponible en el dispositivo; los avisos hablados se pueden desactivar.</p>
+            <p class="setup-error" id="tabata-setup-error" role="alert" hidden></p>
+          </form>
+
+          <section class="tabata-session" id="tabata-session" hidden>
+            <div class="training-session-toolbar">
+              <div class="elapsed-stat">
+                <p>Tiempo de Tabata</p>
+                <strong id="tabata-elapsed">00:00:00</strong>
+              </div>
+              <button class="control end-workout-action" id="end-tabata" type="button">Terminar Tabata</button>
+            </div>
+
+            <div class="phase-banner phase-working" id="tabata-phase-banner">
+              <div class="phase-visual" aria-hidden="true"><span id="tabata-phase-icon">▶</span></div>
+              <div class="phase-copy">
+                <p class="phase-heading" id="tabata-phase-label">TRABAJO</p>
+                <p class="training-instruction" id="tabata-phase-instruction" aria-live="polite">Intervalo 1 de 8</p>
+              </div>
+            </div>
+
+            <div class="tabata-countdown-wrap">
+              <p class="tabata-countdown" id="tabata-countdown">00:20</p>
+              <p class="completed-count" id="tabata-current-interval">Intervalo 1 de 8</p>
+            </div>
+            <div class="progress-track tabata-progress-track" id="tabata-progress-track" aria-label="Progreso de intervalos"></div>
+          </section>
+
+          <section class="training-complete" id="tabata-complete" hidden aria-live="polite">
+            <p class="complete-mark" aria-hidden="true">✓</p>
+            <h3>Tabata completado</h3>
+            <p id="tabata-summary"></p>
+            <button class="control primary" id="new-tabata" type="button">Preparar otro Tabata</button>
           </section>
         </section>
       </section>

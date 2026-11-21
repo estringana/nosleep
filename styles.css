@@ -436,6 +436,12 @@ select {
   background: rgba(255, 255, 255, 0.025);
 }
 
+.audio-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.84rem;
+}
+
 .setup-field {
   display: grid;
   gap: 8px;
@@ -758,6 +764,78 @@ select {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--accent-strong), var(--accent));
   transition: width 180ms ease;
+}
+
+.tabata-session {
+  margin-top: 28px;
+}
+
+.tabata-countdown-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin: 12px 0 20px;
+  padding: 28px 16px;
+  border: 1px solid rgba(91, 246, 200, 0.16);
+  border-radius: 24px;
+  background: radial-gradient(circle at center, rgba(91, 246, 200, 0.1), rgba(255, 255, 255, 0.015) 68%);
+}
+
+.tabata-countdown {
+  margin: 0;
+  color: var(--accent);
+  font-size: clamp(5rem, 17vw, 9rem);
+  line-height: 0.95;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.075em;
+  text-shadow: 0 0 36px rgba(91, 246, 200, 0.2);
+}
+
+.tabata-countdown.resting {
+  color: var(--warning);
+  text-shadow: 0 0 36px rgba(255, 207, 110, 0.2);
+}
+
+.tabata-progress-track {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 9px;
+  max-height: none;
+  overflow: visible;
+}
+
+.tabata-step {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabata-step.done {
+  border-color: var(--accent-strong);
+  color: #02130f;
+  background: var(--accent-strong);
+  font-weight: 800;
+}
+
+.tabata-step.current.work {
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 16px rgba(91, 246, 200, 0.26);
+}
+
+.tabata-step.current.rest {
+  border: 2px solid var(--warning);
+  color: var(--warning);
+  box-shadow: 0 0 16px rgba(255, 207, 110, 0.22);
 }
 
 .overall-progress p {
