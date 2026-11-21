@@ -56,6 +56,8 @@ select {
 }
 
 .app-header {
+  position: relative;
+  z-index: 5;
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -140,12 +142,10 @@ select {
   padding: 32px;
   color: var(--text);
   cursor: pointer;
-  background:
-    radial-gradient(circle at center, rgba(91, 246, 200, 0.13), transparent 42%),
-    linear-gradient(180deg, rgba(11, 28, 46, 0.92), rgba(7, 18, 31, 0.82));
+  background: linear-gradient(180deg, rgba(11, 28, 46, 0.92), rgba(7, 18, 31, 0.82));
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    inset 0 0 120px rgba(91, 246, 200, 0.08);
+    inset 0 0 72px rgba(91, 246, 200, 0.035);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -158,35 +158,27 @@ select {
 .main-ring::after {
   content: "";
   position: absolute;
-  border-radius: 50%;
-  inset: 50%;
-  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .main-ring::before {
-  width: min(72vw, 400px);
-  aspect-ratio: 1;
-  border: 18px solid rgba(91, 246, 200, 0.2);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 0 0 28px rgba(91, 246, 200, 0.06);
+  left: 50%;
+  bottom: 20px;
+  width: min(48vw, 180px);
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(91, 246, 200, 0.65), transparent);
+  transform: translateX(-50%);
+  box-shadow: 0 0 16px rgba(91, 246, 200, 0.15);
 }
 
 .main-ring::after {
-  width: min(72vw, 285px);
-  aspect-ratio: 1;
-  background: radial-gradient(circle, rgba(91, 246, 200, 0.12), transparent 70%);
-  filter: blur(16px);
-  opacity: 0.5;
+  display: none;
 }
 
 .main-ring.running::before {
-  border-color: rgba(91, 246, 200, 0.78);
-  animation: pulse 1.6s ease-in-out infinite;
-}
-
-.main-ring.running::after {
-  opacity: 1;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: line-pulse 1.6s ease-in-out infinite;
 }
 
 .main-ring > * {
@@ -873,17 +865,15 @@ select {
   display: none !important;
 }
 
-@keyframes pulse {
+@keyframes line-pulse {
   0%,
   100% {
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 0 0 28px rgba(91, 246, 200, 0.06);
+    opacity: 0.55;
+    box-shadow: 0 0 8px rgba(91, 246, 200, 0.12);
   }
   50% {
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 0 0 34px rgba(91, 246, 200, 0.12);
+    opacity: 1;
+    box-shadow: 0 0 18px rgba(91, 246, 200, 0.34);
   }
 }
 
@@ -926,34 +916,177 @@ select {
 
 @media (max-width: 640px) {
   .app-shell {
-    width: min(100% - 20px, 1120px);
-    padding: 20px 0 28px;
+    width: min(100% - 12px, 1120px);
+    padding: 8px 0 18px;
   }
 
   .hero-card {
-    padding: 22px;
-    border-radius: 24px;
+    padding: 14px;
+    border-radius: 18px;
   }
 
   .app-header {
     align-items: stretch;
     flex-direction: column;
-    gap: 16px;
+    gap: 0;
+    margin-bottom: 8px;
+  }
+
+  .app-header > div {
+    display: none;
   }
 
   .mode-switch {
     width: 100%;
+    gap: 3px;
+    padding: 4px;
   }
 
   .mode-tab {
     flex: 1;
-    padding: 10px 7px;
-    font-size: 0.86rem;
+    min-width: 0;
+    padding: 9px 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
   }
 
   .main-ring {
-    min-height: 340px;
-    padding: 24px;
+    min-height: 245px;
+    padding: 18px;
+  }
+
+  .main-ring::before {
+    bottom: 14px;
+    width: min(55vw, 185px);
+    height: 2px;
+  }
+
+  .side-panel {
+    gap: 12px;
+  }
+
+  .stat-card {
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .training-card.session-active > .training-heading {
+    display: none;
+  }
+
+  .training-session,
+  .tabata-session {
+    margin-top: 12px;
+  }
+
+  .training-session-toolbar {
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+  }
+
+  .elapsed-stat p {
+    font-size: 0.65rem;
+  }
+
+  .elapsed-stat strong {
+    font-size: 1.15rem;
+  }
+
+  .end-workout-action {
+    min-height: 36px;
+    padding: 6px 9px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .phase-banner {
+    gap: 12px;
+    margin-bottom: 14px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .phase-visual {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
+
+  .phase-heading {
+    font-size: 0.72rem;
+  }
+
+  .training-instruction {
+    font-size: 0.84rem;
+    line-height: 1.35;
+  }
+
+  .training-progress-header {
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .training-progress-header h3 {
+    margin-top: 0;
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+
+  .training-progress-header .completed-count {
+    padding-top: 2px;
+    font-size: 0.7rem;
+    text-align: right;
+  }
+
+  .rest-display {
+    gap: 2px;
+    margin-top: 12px;
+    padding: 14px 10px;
+  }
+
+  .rest-time {
+    font-size: 3rem;
+  }
+
+  .training-actions {
+    margin-top: 12px;
+  }
+
+  .workout-primary-action {
+    min-height: 52px;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+  }
+
+  .progress-track {
+    gap: 7px;
+    margin-top: 14px;
+  }
+
+  .tabata-countdown-wrap {
+    margin: 8px 0 14px;
+    padding: 20px 10px;
+  }
+
+  .tabata-countdown {
+    font-size: clamp(4.5rem, 22vw, 6.5rem);
+  }
+
+  .tabata-progress-track {
+    gap: 7px;
+  }
+
+  .tabata-step {
+    width: 34px;
+    height: 34px;
+  }
+
+  .main-ring .ring-time {
+    font-size: clamp(2.3rem, 11vw, 4rem);
   }
 
   .lap-row,
@@ -968,19 +1101,6 @@ select {
 
   .setup-start {
     justify-self: stretch;
-  }
-
-  .training-progress-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .training-session-toolbar {
-    align-items: flex-start;
-  }
-
-  .end-workout-action {
-    white-space: normal;
   }
 
   .exercise-progress {

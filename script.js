@@ -62,6 +62,7 @@ const elements = {
   trainingView: document.querySelector("#training-view"),
   tabataView: document.querySelector("#tabata-view"),
   trainingSetup: document.querySelector("#training-setup"),
+  trainingCard: document.querySelector("#training-view .training-card"),
   setupError: document.querySelector("#setup-error"),
   exerciseCount: document.querySelector("#exercise-count"),
   roundCount: document.querySelector("#round-count"),
@@ -86,6 +87,7 @@ const elements = {
   trainingSummary: document.querySelector("#training-summary"),
   newTraining: document.querySelector("#new-training"),
   tabataSetup: document.querySelector("#tabata-setup"),
+  tabataCard: document.querySelector("#tabata-view .training-card"),
   tabataSetupError: document.querySelector("#tabata-setup-error"),
   tabataAudioNote: document.querySelector("#tabata-audio-note"),
   tabataWorkSeconds: document.querySelector("#tabata-work-seconds"),
@@ -437,6 +439,7 @@ function formatClock(seconds) {
 
 function renderWorkout() {
   const isActive = ["running", "resting"].includes(workout.status);
+  elements.trainingCard.classList.toggle("session-active", isActive);
   elements.trainingSetup.hidden = isActive || workout.status === "completed";
   elements.trainingSession.hidden = !isActive;
   elements.trainingComplete.hidden = workout.status !== "completed";
@@ -514,6 +517,7 @@ function renderTabata() {
   if (tabata.status === "running") advanceTabata(Date.now());
 
   const isActive = tabata.status === "running";
+  elements.tabataCard.classList.toggle("session-active", isActive);
   elements.tabataSetup.hidden = isActive || tabata.status === "completed";
   elements.tabataSession.hidden = !isActive;
   elements.tabataComplete.hidden = tabata.status !== "completed";
