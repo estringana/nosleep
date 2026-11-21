@@ -8,6 +8,18 @@
   </head>
   <body>
     <main class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Tu temporizador</p>
+          <h1>No Sleep</h1>
+        </div>
+        <nav class="mode-switch" aria-label="Modos de la aplicación">
+          <button class="mode-tab active" type="button" data-mode="keep-awake" aria-pressed="true">Mantener despierto</button>
+          <button class="mode-tab" type="button" data-mode="training" aria-pressed="false">Entrenamiento</button>
+        </nav>
+      </header>
+
+      <section class="mode-view" id="keep-awake-view">
       <section class="hero-card">
         <div class="timer-grid">
           <button
@@ -68,6 +80,91 @@
           </label>
           <button class="control" id="apply-duration" type="button">Aplicar límite</button>
           <p class="duration-status" id="duration-status">Sin límite de tiempo</p>
+        </section>
+      </section>
+      </section>
+
+      <section class="mode-view" id="training-view" hidden>
+        <section class="hero-card training-card">
+          <div class="training-heading">
+            <div>
+              <p class="eyebrow">Modo entrenamiento</p>
+              <h2>Tu entrenamiento, sin perder la cuenta</h2>
+              <p class="training-intro">Configura la sesión una vez. Después solo marca cada ronda como terminada.</p>
+            </div>
+          </div>
+
+          <form class="training-setup" id="training-setup" novalidate>
+            <label class="setup-field">
+              <span>Ejercicios</span>
+              <input id="exercise-count" type="text" inputmode="numeric" value="6" />
+            </label>
+            <label class="setup-field">
+              <span>Rondas por ejercicio</span>
+              <input id="round-count" type="text" inputmode="numeric" value="4" />
+            </label>
+            <label class="setup-field">
+              <span>Descanso (segundos)</span>
+              <input id="rest-seconds" type="text" inputmode="numeric" value="60" />
+            </label>
+            <label class="sound-setting">
+              <input id="sound-enabled" type="checkbox" checked />
+              <span>Avisos sonoros</span>
+            </label>
+            <button class="control primary setup-start" type="submit">Empezar entrenamiento</button>
+            <p class="setup-error" id="setup-error" role="alert" hidden></p>
+          </form>
+
+          <section class="training-session" id="training-session" hidden>
+            <div class="training-session-toolbar">
+              <div class="elapsed-stat">
+                <p>Tiempo de entrenamiento</p>
+                <strong id="training-elapsed">00:00:00</strong>
+              </div>
+              <button class="control end-workout-action" id="end-workout" type="button">
+                Terminar entrenamiento
+              </button>
+            </div>
+
+            <div class="phase-banner phase-working" id="phase-banner">
+              <div class="phase-visual" id="phase-visual" aria-hidden="true"><span id="phase-icon">▶</span></div>
+              <div class="phase-copy">
+                <p class="phase-heading" id="training-status">EN EJERCICIO</p>
+                <p class="training-instruction" id="training-instruction" aria-live="polite">
+                  Haz la ronda indicada y pulsa «He terminado esta ronda».
+                </p>
+              </div>
+            </div>
+
+            <div class="training-progress-header">
+              <div>
+                <h3 id="current-progress">Ejercicio 1 de 6 · Ronda 1 de 4</h3>
+              </div>
+              <p class="completed-count" id="completed-count">0 de 24 rondas</p>
+            </div>
+
+            <div class="rest-display" id="rest-display" hidden>
+              <p class="label">Descansa ahora · siguiente ronda</p>
+              <p class="rest-time" id="rest-time">01:00</p>
+              <p class="rest-next" id="rest-next">Ejercicio 1 · Ronda 2</p>
+            </div>
+
+            <div class="training-actions">
+              <button class="control primary workout-primary-action" id="workout-action" type="button">
+                <span class="action-icon" id="workout-action-icon" aria-hidden="true">✓</span>
+                <span id="workout-action-label">He terminado esta ronda</span>
+              </button>
+            </div>
+
+            <div class="progress-track" id="progress-track" aria-label="Progreso del entrenamiento"></div>
+          </section>
+
+          <section class="training-complete" id="training-complete" hidden aria-live="polite">
+            <p class="complete-mark" aria-hidden="true">✓</p>
+            <h3>Entrenamiento completado</h3>
+            <p id="training-summary"></p>
+            <button class="control primary" id="new-training" type="button">Preparar otro entrenamiento</button>
+          </section>
         </section>
       </section>
     </main>
